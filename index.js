@@ -1,12 +1,14 @@
 var React = require('react');
 var ReactDOMServer = require('react-dom/server');
 var evaluate = require('eval');
+var pretty = require('pretty');
 
 // src can be either a filename or a chunk name
-function ReactToHtmlWebpackPlugin(destPath, src, options) {
+function ReactToHtmlWebpackPlugin(destPath, src, options, props) {
   this.src = src;
   this.destPath = destPath;
   this.options = typeof options === 'object' ? options : {};
+  this.props = typeof props === 'object' ? props : {};
 }
 
 ReactToHtmlWebpackPlugin.prototype.apply = function(compiler) {
@@ -23,7 +25,7 @@ ReactToHtmlWebpackPlugin.prototype.apply = function(compiler) {
       var source = asset.source();
       var Component = evaluate(source, /* filename: */ undefined, /* scope: */ undefined, /* includeGlobals: */ true);
       var renderMethod = this.options.static ? 'renderToStaticMarkup' : 'renderToString';
-      var html = ReactDOMServer[renderMethod](React.createElement(Component.default || Component));
+      var markup = ReactDOMServer[renderMethod](React.createElement(Component.default || Component, this.props));
 
       var template = this.options.template;
 
@@ -33,10 +35,10 @@ ReactToHtmlWebpackPlugin.prototype.apply = function(compiler) {
 
       var output = typeof template === 'function' ?
         template({
-          html: html,
+          html: markup,
           assets: getAssetsFromCompiler(compiler, webpackStatsJson)
         }) :
-        html;
+        pretty(markup);
 
       compiler.assets[this.destPath] = createAssetFromContents(output);
     } catch (err) {
